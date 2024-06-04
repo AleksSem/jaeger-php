@@ -110,21 +110,21 @@ class TransportUdp implements Transport
             $spanThrift = $this->jaegerThrift->buildSpanThrift($span);
             $spanSize = $this->getAndCalcSizeOfSerializedThrift($spanThrift);
             if ($spanSize > self::$maxSpanBytes) {
-                //throw new \Exception("Span is too large");
                 continue;
             }
 
-            $thriftSpansBuffer[] = $spanThrift;
-            $this->bufferSize += $spanSize;
-
-            if ($this->bufferSize >= self::$maxSpanBytes) {
+            if ($this->bufferSize + $spanSize >= self::$maxSpanBytes) {
                 self::$batch = new Batch([
                     'process' => $this->process,
                     'spans' => $thriftSpansBuffer,
                 ]);
                 $this->flush();
                 $thriftSpansBuffer = [];  // Empty the temp buffer
+                $this->bufferSize = 0;
             }
+
+            $thriftSpansBuffer[] = $spanThrift;
+            $this->bufferSize += $spanSize;
         }
 
         if (count($thriftSpansBuffer) > 0) {
